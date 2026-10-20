@@ -18,8 +18,15 @@
 
 ## 2. Ảnh / GIF demo
 
+### Ảnh chụp màn hình ứng dụng thực tế trên thiết bị
+
+| 1. Màn hình chính (UI & Animation) | 2. Biểu đồ FPS chi tiết (`compute`) | 3. So sánh Tổng quan (FPS & Jank) |
+| :---: | :---: | :---: |
+| <img src="demo/home_screen.jpg" width="260" alt="Màn hình chính" /> | <img src="demo/compute_chart.jpg" width="260" alt="Biểu đồ compute()" /> | <img src="demo/overview_comparison.jpg" width="260" alt="So sánh tổng quan" /> |
+| *Hoạt ảnh mượt mà 60.5 FPS khi chưa tải và bảng trạng thái* | *Đường FPS ổn định quanh 60 FPS khi xử lý trong Isolate nền* | *So sánh trực quan: Main tụt về 0 FPS & 1 lần giật; Isolate đạt 58.9 FPS* |
+
 > [!NOTE]
-> *(Thêm ảnh thật sau khi chạy trên điện thoại/emulator – ảnh đầu README là biểu đồ gộp 3 đường sau khi bấm **Run all modes** lần 2, chụp sau đợt chuẩn hóa biểu đồ: đường bậc thang, tiêu đề 2 trục, nhãn 0,5 s, chữ start trắng).*
+> *(Ảnh đầu README là biểu đồ gộp 3 đường sau khi bấm **Run all modes** lần 2, được chuẩn hóa theo quy cách: đường bậc thang 200 ms, tiêu đề 2 trục, nhãn chia 0,5 s, vạch dọc nét đứt tại 0s với chữ "start" trắng).*
 
 ```text
        Biểu đồ gộp 3 đường (FPS Timeline Overview)

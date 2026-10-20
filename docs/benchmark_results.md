@@ -45,7 +45,8 @@ Tài liệu này lưu trữ kết quả thực nghiệm đo lường hiệu năn
 
 ## 3. Ảnh Biểu Đồ So Sánh Thực Tế (FPS Timeline Chart)
 
-*(Dán ảnh chụp màn hình biểu đồ gộp 3 đường tại đây sau khi chạy ứng dụng trên thiết bị thật/emulator).*
+![So sánh hiệu năng thực tế trên thiết bị](../demo/overview_comparison.jpg)
+*Ảnh chụp kết quả đo đạc thực tế: Main Thread bị giật khung hình và tụt về 0.0 FPS; compute() đạt 51.5 FPS; Isolate đạt 58.9 FPS.*
 
 ```text
 65 ┤
