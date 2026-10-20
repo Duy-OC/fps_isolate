@@ -88,9 +88,20 @@ class FpsChartsPage extends StatelessWidget {
           const SizedBox(height: 18),
           Text('Ghi chú', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          Text('FPS cao nhất: ${stats.highestFps.toStringAsFixed(1)}'),
-          Text('FPS thấp nhất: ${stats.lowestFps.toStringAsFixed(1)}'),
-          Text('FPS trung bình: ${stats.averageFps.toStringAsFixed(1)}'),
+          Text(
+            'FPS cao nhất khi xử lý: ${stats.highestFps.toStringAsFixed(1)}',
+          ),
+          Text(
+            'FPS thấp nhất khi xử lý: ${stats.lowestFps.toStringAsFixed(1)}',
+          ),
+          Text(
+            'FPS trung bình khi xử lý: ${stats.averageFps.toStringAsFixed(1)}',
+          ),
+          if (title == 'Main Thread' && stats.averageFps == 0)
+            const Text(
+              'Main Thread bị chặn trong lúc xử lý nên không có khung hình nào; '
+              'FPS trước và sau tác vụ vẫn được vẽ trên biểu đồ.',
+            ),
           Text(
             'Thời gian phản hồi tương tác: ${stats.responseTimeMs.toStringAsFixed(1)} ms',
           ),

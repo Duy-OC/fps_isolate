@@ -44,7 +44,7 @@ void main() {
     expect(find.text('Chưa có dữ liệu FPS cho Main Thread.'), findsOneWidget);
 
     await showCharts(tester, mainThread: trial(32));
-    expect(find.text('FPS trung bình: 32.0'), findsOneWidget);
+    expect(find.text('FPS trung bình khi xử lý: 32.0'), findsOneWidget);
 
     await tester.tap(find.text('compute()'));
     await tester.pumpAndSettle();

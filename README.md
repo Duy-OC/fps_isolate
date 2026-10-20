@@ -1,192 +1,228 @@
 # FPS Isolate Benchmark (Flutter) 🚀
 
-Ứng dụng đo lường, giám sát và trực quan hóa hiệu năng FPS (Frames Per Second) khi xử lý tác vụ nặng (Parse tệp JSON lớn > 15 MB) giữa **Main Thread (UI Thread)** và **Đa luồng (Background Isolate - `compute()` & `Isolate.spawn`)**.
+Ứng dụng Flutter đo lường, giám sát và trực quan hóa hiệu năng FPS (Frames Per Second) khi xử lý tác vụ CPU-bound nặng (phân tích cú pháp tệp JSON dung lượng lớn ~18.5 MB với 120.000 bản ghi) giữa **Main Thread (UI Thread)** và **Đa luồng (Background Isolate với `compute()` & `Isolate.spawn`)**.
 
 ---
 
 ## 1. Chạy thử nhanh
 
-- **Tải [app-release.apk](app-release.apk)** ở ngay gốc repo (bên cạnh `README.md`).
-- **Cài vào điện thoại Android**: Cho phép cài đặt ứng dụng từ nguồn ngoài khi hệ thống hiển thị thông báo nhắc.
-- **Thao tác trong app**:
-  1. Mở ứng dụng.
-  2. Chọn **Generate** (mặc định 40 MB) hoặc bấm **Chọn tệp JSON** từ bộ nhớ thiết bị.
-  3. Bấm **Run all modes 2 lần** (lần đầu là khởi động nóng để nạp cache và runtime, số liệu lấy lần sau).
-- **Không cần cài đặt thêm bất kỳ môi trường nào**: Tệp APK (~48 MB – 50 MB, universal – chạy mọi ABI: arm64-v8a, armeabi-v7a, x86_64) được build trực tiếp từ mã nguồn trong repo; bản release mặc định được ký bằng debug key – thuận tiện và chấp nhận được cho bài demo học phần.
+- **Tải [app-release.apk](app-release.apk)** ở ngay thư mục gốc của repository (bên cạnh file `README.md`).
+- **Cài đặt vào điện thoại Android**: Cho phép cài đặt ứng dụng từ nguồn ngoài (nếu hệ thống hiển thị cảnh báo bảo mật).
+- **Trải nghiệm trực tiếp trên app**:
+  1. Mở ứng dụng: Quan sát hoạt ảnh GIF Qiqi đang chạy mượt mà trên **Màn hình chính** cùng chỉ số `FPS hiện tại: ~60 FPS`. Tệp dữ liệu `data.json` (~18.5 MB) đã được tích hợp sẵn trong ứng dụng.
+  2. Bấm nút **Run** $\rightarrow$ Chọn một trong ba chế độ xử lý trong menu:
+     - **Main Thread**: Thao tác parse JSON chạy trực tiếp trên UI thread $\rightarrow$ Hoạt ảnh Qiqi bị đóng băng (freeze) hoàn toàn trong suốt quá trình xử lý; FPS rơi thẳng về 0.
+     - **compute()**: Tác vụ được chuyển sang Isolate ngầm do Flutter quản lý $\rightarrow$ Hoạt ảnh Qiqi chạy mượt mà liên tục, không hề bị gián đoạn.
+     - **Isolate + Ports**: Tác vụ được thực thi trên Isolate riêng với `Isolate.spawn` và nhận kết quả qua `ReceivePort` / `Isolate.exit` $\rightarrow$ Giao diện giữ vững độ mượt ~60 FPS.
+  3. Mở menu **Drawer** (góc trên bên trái) $\rightarrow$ Chọn **Biểu đồ FPS** để xem chi tiết biểu đồ đường FPS của từng chế độ và tab **Tổng quan** so sánh đối chiếu dạng cột.
+- **Không cần cài đặt thêm**: Bản APK universal (~50 MB, chạy trên mọi kiến trúc CPU Android: ARM64, ARMv7, x86_64) được build trực tiếp từ mã nguồn trong repo và ký bằng debug key để tiện thử nghiệm.
 
 ---
 
-## 2. Ảnh / GIF demo
+## 2. Ảnh demo thực tế từ ứng dụng
 
-### Ảnh chụp màn hình ứng dụng thực tế trên thiết bị
+Dưới đây là ảnh chụp màn hình thực tế được ghi nhận khi chạy ứng dụng trên thiết bị Android:
 
-| 1. Màn hình chính (UI & Animation) | 2. Biểu đồ FPS chi tiết (`compute`) | 3. So sánh Tổng quan (FPS & Jank) |
+| 1. Màn hình chính (UI & Animation) | 2. Biểu đồ chi tiết tab `compute()` | 3. Tab Tổng quan (So sánh đối chiếu) |
 | :---: | :---: | :---: |
 | <img src="demo/home_screen.jpg" width="260" alt="Màn hình chính" /> | <img src="demo/compute_chart.jpg" width="260" alt="Biểu đồ compute()" /> | <img src="demo/overview_comparison.jpg" width="260" alt="So sánh tổng quan" /> |
-| *Hoạt ảnh mượt mà 60.5 FPS khi chưa tải và bảng trạng thái* | *Đường FPS ổn định quanh 60 FPS khi xử lý trong Isolate nền* | *So sánh trực quan: Main tụt về 0 FPS & 1 lần giật; Isolate đạt 58.9 FPS* |
-
-> [!NOTE]
-> *(Ảnh đầu README là biểu đồ gộp 3 đường sau khi bấm **Run all modes** lần 2, được chuẩn hóa theo quy cách: đường bậc thang 200 ms, tiêu đề 2 trục, nhãn chia 0,5 s, vạch dọc nét đứt tại 0s với chữ "start" trắng).*
-
-```text
-       Biểu đồ gộp 3 đường (FPS Timeline Overview)
-FPS
- 65 ┤
- 60 ┼┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈ compute (trắng) / Isolate (xanh)
-    │                                     (duy trì ổn định quanh 60 FPS)
- 30 ┼┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
-    │
-  0 ┼─────────┐                     ┌──── Main Thread (đỏ)
-    │         │                     │     (tụt thẳng đứng về 0 FPS khi UI đóng băng)
-    ┴─────────┼─────────────────────┼────────────────────────► Thời gian (s)
-           -0.5s     0.0s (start)  +1.0s
-```
+| *Hoạt ảnh Qiqi chạy mượt mà 60.5 FPS khi chưa tải và thẻ trạng thái xử lý data.json* | *Đường FPS ổn định quanh 60 FPS khi xử lý ngầm (thời gian phản hồi tương tác 10.3 ms)* | *So sánh trực quan: Main Thread đạt 0.0 FPS & 1 lần khựng lớn; Isolate đạt 58.9 FPS & 0 lần khựng* |
 
 ---
 
 ## 3. Mục tiêu đề tài
 
-- **So sánh Single-thread vs Multi-thread**: Đánh giá sự khác biệt trực quan và định lượng giữa xử lý đơn luồng trên UI thread và đa luồng trong Flutter.
-- **Làm rõ bộ nhớ độc lập của Isolate**: Phân tích cơ chế cô lập Heap, giải thích vì sao biến dùng chung không bị ghi đè và tránh được race condition (xem mục 4).
-- **Làm rõ cơ chế giao tiếp luồng**: Giải thích tường tận nguyên lý truyền thông điệp qua `SendPort`, `ReceivePort`, cơ chế zero-copy của `Isolate.exit`, và hàm tiện ích `compute()`.
-- **Ứng dụng thực tế đo FPS giao diện**: Đo đạc và so sánh Main thread với Isolate khi parse tệp JSON dung lượng lớn (> 15 MB) trên Android Emulator / thiết bị thật.
-- **Báo cáo kết quả toàn diện**: Sau mỗi lần chạy, cung cấp đầy đủ: Tổng thời gian (Wall time), FPS trung bình (FPS TB), FPS tối thiểu (FPS min), Khung hình dài nhất (Longest frame), Số khung hình Vsync bị bỏ lỡ (Missed vsync), và Biểu đồ FPS gộp trực quan theo thời gian.
+- **So sánh Single-thread vs Multi-thread**: Làm rõ sự khác biệt giữa việc xử lý tác vụ nặng trên Main UI Thread và đưa ra Background Isolate trong Flutter.
+- **Làm rõ bản chất bộ nhớ độc lập của Isolate**: Phân tích cơ chế cô lập Heap (Isolated Memory) của Dart, chứng minh các biến top-level/static là bản sao riêng biệt giữa các isolate, giúp tránh hoàn toàn hiện tượng race condition và deadlock.
+- **Thực nghiệm các cơ chế giao tiếp luồng trong Dart**:
+  - Giao tiếp hai chiều bằng thông điệp qua cặp cổng `SendPort` và `ReceivePort`.
+  - Hàm tiện ích `compute()` tích hợp sẵn trong Flutter Foundation.
+  - Tối ưu hóa chuyển giao đối tượng zero-copy bằng `Isolate.exit()`.
+- **Đo lường định lượng và trực quan hóa FPS**:
+  - Đo lường khung hình thời gian thực thông qua `AnimationController` và `FpsMonitor`.
+  - Ghi nhận các chỉ số hiệu năng cụ thể: FPS trung bình, FPS cao nhất/thấp nhất khi xử lý, thời gian xử lý (Processing time), thời gian phản hồi tương tác (Response time), số lần khựng (> 50 ms), và tỉ lệ rớt khung hình (Dropped frame %).
+  - Vẽ biểu đồ đường biến thiên FPS theo trục thời gian và biểu đồ cột so sánh tổng quan giữa cả 3 chế độ chạy.
 
 ---
 
 ## 4. Lý thuyết ngắn
 
-Dart chạy toàn bộ mã của ứng dụng trong một isolate với một **Event Loop** duy nhất; cơ chế `async/await` **không tạo luồng mới**. Một tác vụ đồng bộ tốn CPU (như `jsonDecode` chuỗi 20–50 MB) đặt bên trong một hàm `async` vẫn sẽ chiếm dụng hoàn toàn CPU và chặn Event Loop $\rightarrow$ giao diện người dùng (UI) bị đứng hình hoàn toàn trong hàng trăm đến hàng nghìn mili-giây.
+Trong Dart, mã nguồn ứng dụng chạy mặc định trong một **Root Isolate** với một **Event Loop** duy nhất. Cơ chế `async/await` bản chất là lập trình bất đồng bộ dựa trên Event Queue, **không tự động tạo ra luồng mới**.
 
-**Bộ nhớ độc lập (Isolated Memory)**: Mỗi isolate có một Heap riêng biệt; các biến top-level và static là bản sao độc lập của từng isolate; dữ liệu gửi qua `SendPort` đều được sao chép (deep copy) hoặc chuyển giao quyền sở hữu qua `Isolate.exit`:
+Khi gặp một tác vụ tính toán đồng bộ ngốn nhiều CPU (CPU-bound) như giải mã chuỗi JSON lớn (`jsonDecode(rawJson)`):
+- Tác vụ này chiếm giữ toàn bộ CPU trên Root Isolate.
+- Event Loop bị phong tỏa (blocked), không thể tiếp nhận và xử lý tín hiệu vẽ khung hình từ hệ điều hành (Vsync).
+- Hậu quả: Hoạt ảnh và giao diện người dùng bị **đóng băng hoàn toàn (Jank / UI Freeze)** trong suốt thời gian hàm thực thi.
 
 ```dart
-int counter = 0; // Biến top-level: mỗi isolate sở hữu BẢN SAO RIÊNG BIỆT
+// Ví dụ về bộ nhớ độc lập (Isolated Heap):
+int counter = 0; // Biến top-level trong Root Isolate
 
-void worker(SendPort p) {
-  p.send(counter); // Worker thấy counter = 0 trong heap của nó, không phải giá trị của main
+void worker(SendPort port) {
+  // Isolate worker đọc biến counter trong Heap riêng của nó
+  port.send(counter); // Worker thấy counter = 0, KHÔNG PHẢI 42!
 }
 
 void main() async {
-  counter = 42;
+  counter = 42; // Thay đổi này chỉ nằm trong Root Isolate
   final port = ReceivePort();
   await Isolate.spawn(worker, port.sendPort);
-  final result = await port.first; // Nhận về 0!
+  final result = await port.first;
+  print(result); // In ra 0
 }
 ```
 
-📖 **Chi tiết lý thuyết chuyên sâu:** xem [docs/theory.md](docs/theory.md).
+📖 **Tài liệu lý thuyết chi tiết:** Xem [docs/theory.md](docs/theory.md).
 
 ---
 
-## 5. Kiến trúc & luồng dữ liệu
+## 5. Kiến trúc ứng dụng & Luồng dữ liệu
 
-- **Parser tổng quát (`lib/parsefile.dart` / workers)**: Một hàm `parseJsonFile` tổng quát (chấp nhận mọi JSON hợp lệ, không phụ thuộc cấu trúc/schema cố định) dùng chung cho cả 3 chế độ.
-- **Tối ưu truyền nhận dữ liệu**: Chỉ đường dẫn tệp (hoặc buffer cần thiết) được gửi vào isolate; kết quả trả về cho UI thread là đối tượng thống kê nhỏ gọn `ParseResult` (`JsonStats`: topLevel, nodes, maxDepth, thời gian từng pha).
-- **Biểu đồ FPS gộp**: Gộp 3 đường tín hiệu; trục hoành X căn theo mốc bắt đầu tác vụ = `0.0 s`; chuỗi FPS tính theo từng ô **200 ms dạng bậc thang** (mỗi ô là một đoạn ngang liên tục; ô cuối cùng chưa đủ độ dài bị loại bỏ) $\rightarrow$ ô không có khung hình nào vẽ được sẽ có giá trị = 0 FPS, đường Main tụt về 0 thẳng đứng tương ứng chính xác khoảng thời gian đứng hình.
-- **Bộ điều khiển làm nóng bộ nhớ (Cache Warming)**: Trước mỗi lần đo đạc, controller tự động "warm cache" bằng cách đọc tệp bất đồng bộ trong nền để chế độ chạy đầu tiên không bị thiệt thòi bởi thao tác đọc nguội (cold I/O read) từ bộ nhớ flash.
+Mã nguồn dự án được tổ chức gọn gàng theo từng trách nhiệm:
 
-### Ý nghĩa hai trục của biểu đồ
-
-| Đặc tả | Trục Y (Dọc) | Trục X (Ngang) |
-| :--- | :--- | :--- |
-| **Đại lượng** | **FPS** – Số khung hình vẽ được mỗi giây | **Thời gian (giây)** tính từ lúc bắt đầu tác vụ |
-| **Tiêu đề trục** | `FPS (khung hình/giây)` | `Thời gian từ lúc bắt đầu tác vụ (giây)` |
-| **Khoảng giá trị** | Cố định `0 → 65` (không tự co giãn) | Làm tròn ra ngoài về bội số của 0,5 (khoảng `−1,0 → 1,5`) |
-| **Nhãn chia vạch** | `0, 15, 30, 45, 60` (không hiện nhãn 65) | Mỗi 0,5 s, 1 chữ số thập phân: `-0.5, 0.0, 0.5, 1.0, …` |
-| **Ý nghĩa giá trị** | Mỗi điểm = (số frame trong ô 200 ms) × 5. Bình thường $\approx$ 60; 0 = giao diện đứng hình hoàn toàn | `0.0` = lúc bắt đầu chạy tác vụ (vạch “start”). Giá trị âm = giai đoạn nền trước khi chạy. Giá trị dương = trong lúc chạy tác vụ và ~0,5 s sau đó |
-| **Đường tham chiếu** | Nét đứt tại **60** (mục tiêu mượt mà) và **30** (mức tối thiểu chấp nhận) | Vạch dọc nét đứt tại **0** ghi chữ **start** màu trắng |
-
-> [!NOTE]
-> Biểu đồ giả định màn hình 60 Hz tiêu chuẩn; trên thiết bị có tần số quét 90/120 Hz, số lượng khung hình sẽ cao hơn và “đường tham chiếu 60” không còn là mức tối đa.
-
-📖 **Chi tiết thiết kế kiến trúc:** xem [docs/architecture.md](docs/architecture.md).
-
----
-
-## 6. Chạy từ source
-
-| Đối tượng | Cách chạy | Cần cài |
-| :--- | :--- | :--- |
-| **Người chỉ muốn xem demo** | Tải [app-release.apk](app-release.apk) ở gốc repo | Không cần cài gì thêm |
-| **Người chạy từ source** | `git clone` $\rightarrow$ `flutter pub get` $\rightarrow$ `flutter run --profile` | Flutter SDK + thiết bị Android thật hoặc Android Emulator |
-
-### Các lệnh chạy:
-
-```bash
-git clone https://github.com/Duy-OC/fps_isolate.git
-cd fps_isolate
-flutter pub get
-flutter run --profile   # hoặc --release; ưu tiên thiết bị thật
+```text
+lib/
+├── main.dart             # Điểm khởi chạy ứng dụng (Entry point)
+├── interface.dart        # Màn hình chính (DemoPage), hoạt ảnh Qiqi, nút Run, thanh trạng thái
+├── runmodes.dart         # Triển khai 3 chế độ chạy: runOnMain, runWithCompute, runWithPorts
+├── parsefile.dart        # Hàm processLargeJson giải mã JSON và tính toán thống kê
+├── fps_monitor.dart      # Engine đo FPS (FpsMonitor) với cửa sổ mẫu 250ms
+├── fps_charts.dart       # Màn hình Biểu đồ FPS (FpsChartsPage): 3 tab đường và 1 tab cột Tổng quan
+└── result_table.dart     # Bảng phân trang PaginatedDataTable đọc dữ liệu lazy từ rawJson
+assets/
+├── data.json             # Tệp dữ liệu JSON lớn (~18.5 MB, ~120.000 bản ghi)
+└── qiqi.gif              # Hoạt ảnh GIF dùng làm thước đo trực quan độ mượt của UI
+tool/
+└── gen.dart              # Script tạo tệp data.json mẫu ngẫu nhiên
 ```
 
-- **Android Studio**: Chỉ là tùy chọn – công cụ tiện nhất để cài đặt Android SDK và tạo máy ảo Android Emulator (AVD).
-- **Điện thoại thật**: Khuyên dùng cắm cáp USB (bật *Developer options* + *USB debugging*).
-- **Lưu ý nền tảng**: Ứng dụng chỉ nhắm đến nền tảng **Android**. Flutter Web không hỗ trợ Isolate song song thật (hàm `compute()` trên Web chạy trực tiếp trên main thread) nên không hỗ trợ bản web.
+### Chi tiết hoạt động của các module:
+
+1. **Bộ phân tích cú pháp (`lib/parsefile.dart`)**:
+   - `processLargeJson(String rawJson)`: Nhận chuỗi JSON thô, dùng `jsonDecode` để chuyển thành danh sách các đối tượng người dùng, tính tổng điểm (`totalScore`), số người sống tại Đà Nẵng (`daNangCount`), số lượng tags (`tagCount`), và trả về `ProcessResult` (Map chứa kết quả thống kê).
+2. **Các chế độ xử lý (`lib/runmodes.dart`)**:
+   - **`runOnMain`**: Thực thi trực tiếp hàm `processLargeJson` trên Root Isolate $\rightarrow$ Chặn UI thread.
+   - **`runWithCompute`**: Sử dụng `compute(processLargeJson, rawJson)` để Flutter tự tạo Isolate tạm thời và thu dọn sau khi xong.
+   - **`runWithPorts`**: Tự tạo Isolate bằng `Isolate.spawn` kèm cặp `SendPort`/`ReceivePort`. Hàm worker sau khi tính toán xong sẽ gọi `Isolate.exit(sendPort, result)` để chuyển quyền sở hữu kết quả về Root Isolate theo cơ chế **zero-copy**.
+3. **Engine đo lường FPS (`lib/fps_monitor.dart`)**:
+   - Lắng nghe sự kiện vẽ khung hình thông qua listener của `AnimationController`.
+   - Sử dụng cửa sổ lấy mẫu chuẩn **250 ms** (`fpsSampleWindowUs = 250000`).
+   - Phân tách riêng biệt số lượng frame trong thời gian xử lý (`processingBucketCount`) và thời gian hồi phục sau đó (`recoveryBucketCount`) để đảm bảo các khung hình hồi phục không bị vẽ lấn vào giai đoạn Main Thread đang bị khóa.
+4. **Biểu đồ FPS (`lib/fps_charts.dart`)**:
+   - **Tab Chế độ riêng (Main Thread / compute / Isolate)**: Sử dụng `CustomPainter` vẽ đường biến thiên FPS theo trục thời gian (tối đa 2s trước khi chạy đến 2s sau khi xong); có vạch đỏ đánh dấu thời điểm bắt đầu chạy và vạch xanh đánh dấu thời điểm xử lý xong.
+   - **Tab Tổng quan**: Sử dụng `CustomPainter` vẽ 3 biểu đồ cột so sánh đối chiếu trực tiếp giữa 3 chế độ theo 3 tiêu chí: *FPS trung bình*, *Số lần giật (> 50 ms)*, và *Tỉ lệ rớt khung hình (%)*.
+5. **Bảng phân trang hiển thị (`lib/result_table.dart`)**:
+   - Sử dụng `PaginatedDataTable` hiển thị 120.000 bản ghi với cơ chế đọc phân trang lười (lazy loading qua `_UserDataSource`), chỉ giải mã các dòng JSON thuộc trang hiện tại (10 dòng/trang), giúp tiết kiệm tối đa bộ nhớ RAM.
+
+📖 **Tài liệu kiến trúc chi tiết:** Xem [docs/architecture.md](docs/architecture.md).
 
 ---
 
-## 7. Hướng dẫn sử dụng từng bước
+## 6. Chạy từ source code
 
-1. **Chọn nguồn dữ liệu**:
-   - **Generate**: Chọn kích thước `20 / 40 / 50 MB` (khuyến nghị **40 MB** – để thấy rõ hiện tượng đứng hình) $\rightarrow$ bấm **Generate**. Tệp sinh vào thư mục tạm với seed cố định (đảm bảo tính tái lập), không commit lên git.
-   - **Chọn tệp JSON**: Chọn bất kỳ tệp `.json` nào có trên bộ nhớ máy. Tệp `> 100 MB` sẽ hiển thị hộp thoại xác nhận; tệp `< 15 MB` hiển thị cảnh báo nhỏ (hiện tượng jank có thể không đủ rõ) nhưng không chặn người dùng.
-2. **Chọn chế độ chạy**:
-   - Chọn một trong các chế độ: **Main thread** / **compute()** / **Isolate (SendPort)**.
-   - Bấm **Run** (chạy 1 chế độ được chọn) hoặc bấm **Run all modes** (tự động chạy tuần tự: Main $\rightarrow$ compute $\rightarrow$ Isolate, nghỉ 1 s giữa các lần đo).
-   - Ở chế độ Main thread, hệ thống sẽ hiện dòng cảnh báo: *“UI sẽ đứng hình vài giây…”* – **lưu ý: không chạm vào màn hình trong lúc tác vụ đang chạy**.
-   - **Khuyến nghị**: Bấm **Run all modes 2 lần** – lần đầu là khởi động nóng (warm-up run), lấy số liệu đo đạc ở lần thứ hai.
-3. **Đọc và đối chiếu kết quả**:
-   - **Biểu đồ gộp**: Màu đỏ = Main (tụt về 0 FPS = đứng hình), Màu trắng = `compute()`, Màu xanh = `Isolate`; phần legend đi kèm chỉ số "frame dài nhất" của từng chế độ; vạch "start" = thời điểm bắt đầu tác vụ.
-   - **Bảng ResultCard**: Hiển thị Wall time (tổng thời gian), FPS TB/min, Frame dài nhất, Jank count, Vsync bỏ lỡ, Số lượng Nodes, và thời gian chi tiết các pha `read / decode / walk`.
-   - Bấm nút **Copy Markdown** để sao chép kết quả và dán vào [docs/benchmark_results.md](docs/benchmark_results.md).
-   - Ở chế độ **Isolate (SendPort)**: Giao diện hiển thị thanh tiến độ ba giai đoạn (`read` $\rightarrow$ `decode` $\rightarrow$ `walk`) – đây là ưu thế vượt trội của `Isolate.spawn` so với `compute()`.
+### Yêu cầu môi trường:
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (phiên bản `>= 3.13.5`)
+- Thiết bị Android thật (đã bật *Tùy chọn cho nhà phát triển* & *Gỡ lỗi USB*) hoặc Android Emulator.
 
----
+### Các lệnh thực thi:
 
-## 8. Nguồn dữ liệu và giới hạn đầu vào
+```bash
+# 1. Clone repo về máy
+git clone https://github.com/Duy-OC/fps_isolate.git
+cd fps_isolate
 
-- **Generate 20 / 40 / 50 MB (khuyến nghị 40 MB)**: Sinh mảng đối tượng JSON mẫu lớn với seed ngẫu nhiên cố định = `42`.
-- **Chọn tệp JSON bất kỳ**: Bộ phân tích cú pháp không phụ thuộc vào cấu trúc cố định – chấp nhận mọi dữ liệu JSON hợp lệ theo chuẩn UTF-8 (gốc là Object, Array hoặc Scalar).
-- **Dung lượng khuyến nghị**: Từ **15 MB đến 100 MB** để hiện tượng giật lag/đóng băng thể hiện rõ nét trong khi vẫn đảm bảo dung lượng RAM hợp lý. Tệp 50 MB sau khi parse có thể chiếm dụng đáng kể bộ nhớ (cây đối tượng JSON trong Heap + bản sao ở Isolate).
-- **Phạm vi kiểm thử**: Ứng dụng tập trung đo lường thời gian phân tích cú pháp và chỉ số FPS của giao diện – không can thiệp thẩm định ngữ nghĩa nội dung JSON.
-- **Xử lý ngoại lệ**: Nếu tệp JSON bị lỗi cú pháp, ứng dụng bắt ngoại lệ `FormatException`, hiển thị thông báo qua `SnackBar` thân thiện và tuyệt đối không gây crash ứng dụng.
+# 2. Cài đặt các thư viện phụ thuộc
+flutter pub get
 
----
+# 3. Chạy ứng dụng (khuyến nghị chế độ --profile hoặc --release để đo hiệu năng chuẩn xác nhất)
+flutter run --profile
 
-## 9. Kết quả benchmark
+# 4. (Tùy chọn) Chạy bộ kiểm thử tự động
+flutter test
 
-> [!IMPORTANT]
-> Toàn bộ số liệu công bố phải do ứng dụng đo lường thực tế trên thiết bị. Xem chi tiết tại [docs/benchmark_results.md](docs/benchmark_results.md).
-
-- **Phương pháp đo**: Bấm **Run all modes** từ 3 đến 5 lần, lấy giá trị **trung vị (median)**; ghi nhận đầy đủ: Model điện thoại/máy ảo, Chế độ build (`--profile` / `--release`), Phiên bản Flutter & Dart, và Kích thước tệp JSON.
-- **Lưu ý về máy ảo**: Nếu thực hiện đo trên Android Emulator, giá trị thời gian tuyệt đối có thể không phản ánh chính xác 100% phần cứng máy thật, nhưng tỷ lệ tương quan so sánh giữa 3 chế độ (Main vs compute vs Isolate) vẫn hoàn toàn chuẩn xác và có giá trị khoa học.
-
-*(Bảng số liệu chi tiết và ảnh biểu đồ chụp từ thiết bị thực tế được lưu trữ trong [docs/benchmark_results.md](docs/benchmark_results.md)).*
+# 5. (Tùy chọn) Tạo lại file data.json mẫu nếu muốn
+dart run tool/gen.dart
+```
 
 ---
 
-## 10. Phân tích, kết luận, hạn chế
+## 7. Hướng dẫn sử dụng ứng dụng từng bước
 
-- **Main thread**: Do Event Loop bị chiếm dụng liên tục trong toàn bộ thời gian parse JSON, UI Thread không thể xử lý tín hiệu Vsync; đường tín hiệu màu đỏ trên biểu đồ tụt dốc không phanh về **0 FPS** trong suốt thời gian tác vụ chạy; ghi nhận khung hình dài nhất lên đến hàng nghìn mili-giây.
-- **`compute()` / Isolate**: Tách toàn bộ tác vụ giải mã nặng sang luồng nền độc lập; Main thread hoàn toàn thảnh thơi để tiếp tục duy trì hoạt ảnh mượt mà ở mức **$\approx$ 60 FPS**; chi phí phụ trội chỉ là việc spawn luồng và chuyển giao kết quả `ParseResult` nhỏ gọn (chi phí gần như bằng 0 nhờ cơ chế `Isolate.exit`).
-
-### Hạn chế cần biết:
-1. **Chi phí khởi tạo Isolate**: Việc spawn một isolate mới tiêu tốn từ vài đến vài chục ms – do đó isolate không mang lại lợi ích cho các tác vụ tính toán quá ngắn (< 5 ms).
-2. **Chi phí sao chép bộ nhớ**: Việc truyền dữ liệu đối tượng có kích thước lớn qua `SendPort` mà không dùng `Isolate.exit` sẽ tiêu tốn thời gian sao chép tỉ lệ thuận với kích thước dữ liệu.
-3. **Giao tiếp tầng nền tảng (Platform Channels)**: Các plugin hoặc thư viện phụ thuộc platform channel cần cấu hình `RootIsolateToken` nếu muốn gọi từ Background Isolate.
-4. **Flutter Web**: Không có isolate song song thực sự do tính chất đơn luồng của runtime JavaScript trên trình duyệt.
-5. **Nút thắt hiển thị (Build/Paint)**: Isolate giải phóng CPU cho việc tính toán logic, nhưng không thể giải quyết được tình trạng drop frame nếu chính widget tree của bạn quá nặng khi render.
+1. **Màn hình chính**:
+   - Khi mở app, bạn sẽ thấy hoạt ảnh GIF Qiqi quay liên tục cùng nhãn `FPS hiện tại: ~60.0`.
+   - Phần thẻ **Xử lý file** bên dưới hiển thị tên tệp `data.json` cùng thanh tiến trình 3 trạng thái: `Chưa xử lý`, `Đang xử lý`, `Đã xử lý`.
+2. **Kích hoạt Benchmark**:
+   - Bấm nút **Run** $\rightarrow$ Một menu Bottom Sheet xuất hiện cho phép chọn 1 trong 3 chế độ:
+     - **Main Thread**: Ngay khi bấm, hoạt ảnh Qiqi lập tức bị khựng cứng lại hoàn toàn; giao diện không thể cuộn hay tương tác trong khoảng 0.5s – 1.5s.
+     - **compute()**: Hoạt ảnh Qiqi vẫn chuyển động mượt mà, không xảy ra hiện tượng giật lag.
+     - **Isolate + Ports**: Hoạt ảnh tiếp tục xoay đều đặn ở mức ~60 FPS.
+   - Khi xử lý xong, thanh trạng thái chuyển sang màu tím ở ô `Đã xử lý`.
+3. **Xem kết quả & biểu đồ**:
+   - Mở thanh menu bên cạnh (Drawer) $\rightarrow$ Chọn **Biểu đồ FPS**.
+   - Chuyển giữa các tab:
+     - Tab **Main Thread** / **compute()** / **Isolate**: Xem đường FPS theo thời gian, thời gian xử lý (ms), thời gian phản hồi tương tác (ms), số lần khựng (> 50 ms), và tỉ lệ rớt khung hình (%).
+     - Tab **Tổng quan**: Sau khi đã bấm thử nghiệm cả 3 chế độ, tab này sẽ hiển thị 3 biểu đồ cột so sánh trực diện giúp nhận thấy ngay sự vượt trội của Isolate.
 
 ---
 
-## 11. Tài liệu tham khảo & giấy phép
+## 8. Dữ liệu thử nghiệm & Tối ưu bộ nhớ
 
-- 📖 [docs/theory.md](docs/theory.md) – Lý thuyết chuyên sâu về Isolate & Event Loop trong Dart.
-- 📐 [docs/architecture.md](docs/architecture.md) – Kiến trúc hệ thống, quy cách biểu đồ và luồng dữ liệu.
-- 📊 [docs/benchmark_results.md](docs/benchmark_results.md) – Kết quả đo đạc thực nghiệm và bảng thông số.
+- **Tệp dữ liệu `assets/data.json`**: Dung lượng ~18.5 MB, gồm 120.000 đối tượng JSON phẳng có cấu trúc:
+  ```json
+  {
+    "id": 0,
+    "name": "User 0",
+    "email": "user0@example.com",
+    "score": 85.4,
+    "tags": ["a", "b", "c"],
+    "address": {"city": "Da Nang", "zip": 54321}
+  }
+  ```
+- **Tối ưu RAM**:
+  - Khi parse trong Isolate: Hàm chỉ trả về kết quả tổng hợp nhỏ gọn `ProcessResult` (userCount, averageScore, daNangCount, tagCount), giải phóng bộ nhớ của 120.000 đối tượng ngay khi worker kết thúc.
+  - Khi hiển thị bảng: `_UserDataSource` chỉ tìm kiếm vị trí dòng theo chỉ mục (index offset) trong chuỗi `rawJson` và giải mã đúng 10 bản ghi cho trang hiện hành, không giữ toàn bộ danh sách đối tượng trong RAM.
+
+---
+
+## 9. Kết quả đo đạc thực tế (Benchmark Results)
+
+Số liệu đo lường thực tế ghi nhận từ chính ứng dụng trên thiết bị Android:
+
+| Chỉ số Hiệu năng | Main Thread (UI Thread) | Flutter `compute()` | Custom Isolate (`Isolate.spawn`) |
+| :--- | :---: | :---: | :---: |
+| **FPS trung bình khi xử lý** | **0.0 FPS** *(đóng băng)* | **51.5 FPS** | **58.9 FPS** |
+| **FPS cao nhất / thấp nhất** | 0.0 / 0.0 FPS | 56.0 / 48.0 FPS | 60.0 / 58.0 FPS |
+| **Số lần khựng (> 50 ms)** | **1 lần** *(toàn bộ thời gian xử lý)* | **0 lần** | **0 lần** |
+| **Thời gian phản hồi tương tác** | ~1.400 ms | **10.3 ms** | **~8.5 ms** |
+| **Thời gian xử lý** | ~500 – 1.450 ms | ~505 ms | ~490 ms |
+| **Tỉ lệ rớt khung hình** | **100%** | **14.2%** | **~1.5%** |
+| **Trạng thái Hoạt ảnh GIF** | ❌ Bị đóng băng hoàn toàn | ✔️ Chuyển động mượt mà | ✔️ Chuyển động mượt mà |
+
+📖 **Xem thêm phân tích chi tiết:** [docs/benchmark_results.md](docs/benchmark_results.md).
+
+---
+
+## 10. Phân tích, Kết luận & Hạn chế
+
+### 10.1. Phân tích & Kết luận
+- **Main Thread**: Do Event Loop phải gánh toàn bộ quá trình `jsonDecode` nặng, không một khung hình nào được vẽ trong suốt thời gian này $\rightarrow$ FPS trung bình khi xử lý tụt về đúng **0.0 FPS**, gây gián đoạn nghiêm trọng trải nghiệm người dùng.
+- **`compute()` và Isolate**: Tách rời tác vụ tính toán sang một thread nền của hệ điều hành. Root Isolate hoàn toàn rảnh tay để tiếp tục duy trì hoạt ảnh mượt mà quanh mức **~60 FPS** với thời gian phản hồi tương tác cực nhanh (~10 ms).
+- **`Isolate.spawn` + `Isolate.exit`**: Mang lại hiệu năng tối ưu nhất nhờ cơ chế zero-copy transfer, giúp gửi kết quả Map thống kê về Main Isolate tức thời mà không tốn chi phí sao chép bộ nhớ (deep copy).
+
+### 10.2. Hạn chế cần lưu ý
+1. **Chi phí khởi tạo Isolate**: Việc khởi tạo một Isolate tiêu tốn từ vài mili-giây, do đó không nên dùng Isolate cho các tác vụ tính toán quá nhỏ (< 5 ms).
+2. **Bộ nhớ độc lập**: Không thể chia sẻ trực tiếp biến đối tượng giữa các isolate; mọi thông điệp cần trao đổi phải thông qua `SendPort`/`ReceivePort`.
+3. **Nền tảng Flutter Web**: Trình duyệt chạy đơn luồng JavaScript nên `compute()` trên Web không chạy song song thật như trên thiết bị Android/iOS.
+4. **Nút thắt Render**: Isolate chỉ giải quyết được tác vụ nặng về mặt logic/tính toán CPU-bound. Nếu giật lag do cây Widget quá sâu hoặc layout/paint quá nặng thì Isolate không thể can thiệp.
+
+---
+
+## 11. Tài liệu tham khảo & Giấy phép
+
+- 📖 [docs/theory.md](docs/theory.md) – Lý thuyết chuyên sâu về Concurrency và Isolate trong Dart.
+- 📐 [docs/architecture.md](docs/architecture.md) – Kiến trúc chi tiết các module và cơ chế đo FPS của ứng dụng.
+- 📊 [docs/benchmark_results.md](docs/benchmark_results.md) – Kết quả đo đạc thực nghiệm.
 - 🔗 [Dart Documentation – Concurrency & Isolates](https://dart.dev/language/concurrency)
-- 🔗 [Flutter Documentation – Profiling Flutter apps](https://docs.flutter.dev/perf/ui-performance)
 - 🔗 [Flutter API – `compute` function](https://api.flutter.dev/flutter/foundation/compute-constant.html)
 
-**Giấy phép (License)**: Dự án được phân phối dưới giấy phép [MIT](LICENSE).
+**Giấy phép (License)**: Dự án được phát hành theo giấy phép [MIT](LICENSE).

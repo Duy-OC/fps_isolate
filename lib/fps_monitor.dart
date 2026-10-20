@@ -44,41 +44,50 @@ FrameStats buildFrameStats({
 }) {
   final processing = max(1, processingUs);
   final total = max(processing, totalUs);
-  // Chỉ dùng cửa sổ đủ 250 ms; cửa sổ cuối quá ngắn sẽ tạo đỉnh FPS giả.
-  final bucketCount = max(1, total ~/ fpsSampleWindowUs);
-  final frameCounts = List<int>.filled(bucketCount, 0);
+  // Tách các ô tại thời điểm xử lý xong để frame hồi phục không bị vẽ
+  // ngược vào khoảng thời gian Main Thread còn đang bị chặn.
+  final processingBucketCount = processing ~/ fpsSampleWindowUs;
+  final recoveryBucketCount = (total - processing) ~/ fpsSampleWindowUs;
+  final processingCounts = List<int>.filled(processingBucketCount, 0);
+  final recoveryCounts = List<int>.filled(recoveryBucketCount, 0);
   var processingFrames = 0;
 
   for (final timeUs in frameTimesUs) {
-    final bucket = timeUs ~/ fpsSampleWindowUs;
-    if (bucket >= 0 && bucket < bucketCount) frameCounts[bucket]++;
-    if (timeUs >= 0 && timeUs <= processing) processingFrames++;
+    if (timeUs >= 0 && timeUs < processing) {
+      processingFrames++;
+      final bucket = timeUs ~/ fpsSampleWindowUs;
+      if (bucket < processingBucketCount) processingCounts[bucket]++;
+    } else if (timeUs >= processing) {
+      final bucket = (timeUs - processing) ~/ fpsSampleWindowUs;
+      if (bucket < recoveryBucketCount) recoveryCounts[bucket]++;
+    }
   }
-
-  final samples = <FpsSample>[
-    ...baselineSamples,
-    for (var bucket = 0; bucket < bucketCount; bucket++)
-      FpsSample(
-        (bucket + 0.5) * fpsSampleWindowUs / 1000000,
-        frameCounts[bucket] * 1000000 / fpsSampleWindowUs,
-      ),
-  ];
 
   final averageFps = processingFrames * 1000000 / processing;
-  final fullProcessingBuckets = processing ~/ fpsSampleWindowUs;
-  final processingCounts = List<int>.filled(fullProcessingBuckets, 0);
-  for (final timeUs in frameTimesUs) {
-    if (timeUs < 0 || timeUs >= fullProcessingBuckets * fpsSampleWindowUs) {
-      continue;
-    }
-    processingCounts[timeUs ~/ fpsSampleWindowUs]++;
-  }
-  final processingFps = fullProcessingBuckets == 0
+  final processingFps = processingBucketCount == 0
       ? [averageFps]
       : [
           for (final count in processingCounts)
             count * 1000000 / fpsSampleWindowUs,
         ];
+  final firstProcessingFps = processingFps.first;
+  final lastProcessingFps = processingFps.last;
+  final samples = <FpsSample>[
+    ...baselineSamples,
+    if (baselineSamples.isNotEmpty) FpsSample(0, baselineSamples.last.fps),
+    FpsSample(0, firstProcessingFps),
+    for (var bucket = 0; bucket < processingBucketCount; bucket++)
+      FpsSample(
+        (bucket + 0.5) * fpsSampleWindowUs / 1000000,
+        processingCounts[bucket] * 1000000 / fpsSampleWindowUs,
+      ),
+    FpsSample(processing / 1000000, lastProcessingFps),
+    for (var bucket = 0; bucket < recoveryBucketCount; bucket++)
+      FpsSample(
+        (processing + (bucket + 0.5) * fpsSampleWindowUs) / 1000000,
+        recoveryCounts[bucket] * 1000000 / fpsSampleWindowUs,
+      ),
+  ];
 
   var longPauses = 0;
   var previousFrameUs = 0;

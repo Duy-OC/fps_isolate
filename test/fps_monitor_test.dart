@@ -12,8 +12,15 @@ void main() {
     );
 
     expect(stats.fpsSamples.first.secondsFromStart, lessThan(0));
-    expect(stats.fpsSamples[2].fps, 0);
     expect(stats.fpsSamples[3].fps, 0);
+    expect(stats.fpsSamples[4].fps, 0);
+    expect(
+      stats.fpsSamples
+          .where((sample) => sample.secondsFromStart < 0.6)
+          .every((sample) => sample.fps == 0 || sample.secondsFromStart <= 0),
+      isTrue,
+    );
+    expect(stats.fpsSamples.last.fps, greaterThan(0));
     expect(stats.averageFps, 0);
     expect(stats.lowestFps, 0);
     expect(stats.longPauses, 1);
@@ -51,5 +58,29 @@ void main() {
       4,
     );
     expect(stats.highestFps, 0);
+  });
+
+  test('Frame hồi phục không bị vẽ trước mốc kết thúc xử lý', () {
+    final stats = buildFrameStats(
+      baselineSamples: const [FpsSample(-0.25, 60)],
+      frameTimesUs: const [469000, 485000, 501000],
+      processingUs: 458000,
+      totalUs: 800000,
+      responseTimeMs: 469,
+    );
+
+    expect(stats.averageFps, 0);
+    expect(stats.highestFps, 0);
+    expect(
+      stats.fpsSamples
+          .where(
+            (sample) =>
+                sample.secondsFromStart > 0 && sample.secondsFromStart <= 0.458,
+          )
+          .every((sample) => sample.fps == 0),
+      isTrue,
+    );
+    expect(stats.fpsSamples.last.secondsFromStart, greaterThan(0.458));
+    expect(stats.fpsSamples.last.fps, greaterThan(0));
   });
 }

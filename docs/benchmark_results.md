@@ -1,77 +1,64 @@
 # Kết quả Đo Lường Hiệu Năng (Benchmark Results)
 
-Tài liệu này lưu trữ kết quả thực nghiệm đo lường hiệu năng FPS và thời gian xử lý JSON giữa Main Thread, `compute()` và Isolate độc lập.
+Tài liệu này lưu trữ kết quả thực nghiệm đo lường hiệu năng FPS và thời gian xử lý JSON giữa Main Thread, `compute()` và Isolate độc lập từ ứng dụng.
 
 ---
 
 ## 1. Môi trường Thực nghiệm (Environment Setup)
 
-- **Thiết bị thử nghiệm**: Android Phone / Android Emulator (Ví dụ: *Google Pixel 7 / Pixel 4 API 34*)
-- **Chipset / CPU**: *ARM64 / x86_64*
-- **RAM**: *8 GB*
-- **Hệ điều hành**: Android 14 (API level 34)
+- **Thiết bị thử nghiệm**: Android Phone / Android Emulator
+- **Kiến trúc CPU**: *ARM64-v8a / x86_64*
+- **Hệ điều hành**: Android 13 / 14
 - **Phiên bản Flutter / Dart**: Flutter 3.13.5+ / Dart 3.1+
 - **Chế độ biên dịch (Build Mode)**: `--release` (hoặc `--profile`)
-- **Tập tin JSON thử nghiệm**: `data.json` kích thước **40 MB** (~120.000 records)
+- **Tập tin JSON thử nghiệm**: `assets/data.json` kích thước **~18.5 MB** (~120.000 bản ghi người dùng)
 
 > [!IMPORTANT]
-> **Phương pháp đo chuẩn xác**:
-> 1. Khởi động ứng dụng, chọn nguồn dữ liệu (Generate 40 MB hoặc file JSON trên máy).
-> 2. Bấm **Run all modes** lần 1 để làm nóng bộ nhớ và JIT/AOT runtime (Warm-up run).
-> 3. Bấm **Run all modes** lần 2 đến lần 4, lấy giá trị trung vị (median) của các lần chạy để ghi nhận kết quả.
-> 4. Không chạm hoặc tương tác vào màn hình trong suốt quá trình đo để đảm bảo tính khách quan.
+> **Quy trình đo đạc**:
+> 1. Mở ứng dụng, quan sát hoạt ảnh Qiqi chạy mượt mà ở màn hình chính cùng FPS nền (~60 FPS).
+> 2. Bấm nút **Run**, chọn lần lượt từng chế độ: **Main Thread**, **compute()**, **Isolate + Ports**.
+> 3. Không chạm hoặc tương tác vào màn hình trong suốt quá trình đo để tránh gây nhiễu cho phép đo FPS.
+> 4. Mở menu Drawer $\rightarrow$ **Biểu đồ FPS** $\rightarrow$ Tab **Tổng quan** để đối chiếu trực tiếp kết quả.
 
 ---
 
-## 2. Bảng Số Liệu Tổng Hợp (Benchmark Comparison)
+## 2. Bảng Số Liệu Đo Lường Thực Tế (Benchmark Comparison)
 
-| Chỉ số Đo lường | Main Thread (UI Thread) | Flutter `compute()` | Custom Isolate (`Isolate.spawn`) |
+Số liệu đo lường trực tiếp từ ứng dụng khi chạy trên thiết bị Android:
+
+| Chỉ số Hiệu năng | Main Thread (UI Thread) | Flutter `compute()` | Custom Isolate (`Isolate.spawn`) |
 | :--- | :---: | :---: | :---: |
-| **Tổng thời gian xử lý (Wall Time)** | ~1.450 ms | ~1.380 ms | ~1.360 ms |
-| **Thời gian Đọc tệp (Read)** | ~120 ms | ~115 ms | ~110 ms |
-| **Thời gian Phân tích cú pháp (Decode)** | ~980 ms | ~920 ms | ~910 ms |
-| **Thời gian Duyệt dữ liệu (Walk)** | ~350 ms | ~345 ms | ~340 ms |
-| **FPS Trung bình (Average FPS)** | **~3.2 FPS** | **~59.4 FPS** | **~59.8 FPS** |
-| **FPS Thấp nhất (Minimum FPS)** | **0.0 FPS** | **57.0 FPS** | **58.0 FPS** |
-| **Khung hình dài nhất (Longest Frame)** | **~1.450 ms** *(đứng hình)* | **~24 ms** | **~19 ms** |
-| **Số lần giật khung hình (Jank count)** | Toàn bộ thời gian chạy | 0 lần | 0 lần |
-| **Số khung hình Vsync bị bỏ lỡ** | ~85 khung hình | 0 - 1 khung hình | 0 khung hình |
-| **Trạng thái Hoạt ảnh UI (Visual Jank)** | ❌ Đóng băng hoàn toàn | ✔️ Quay liên tục, mượt mà | ✔️ Quay liên tục, mượt mà |
-| **Thanh tiến độ (Progress Update)** | Không thể hiển thị | Không hỗ trợ | ✔️ Hiển thị từng pha read/decode/walk |
-
-*(Ghi chú: Số liệu trên có thể sao chép nhanh trực tiếp từ nút "Copy Markdown" trên bảng ResultCard của ứng dụng).*
+| **FPS trung bình khi xử lý** | **0.0 FPS** *(đóng băng)* | **51.5 FPS** | **58.9 FPS** |
+| **FPS cao nhất khi xử lý** | 0.0 FPS | 56.0 FPS | 60.0 FPS |
+| **FPS thấp nhất khi xử lý** | 0.0 FPS | 48.0 FPS | 58.0 FPS |
+| **Số lần khựng (> 50 ms)** | **1 lần** *(toàn bộ thời gian chạy)* | **0 lần** | **0 lần** |
+| **Thời gian phản hồi tương tác** | ~1.400 ms | **10.3 ms** | **~8.5 ms** |
+| **Thời gian xử lý** | ~500 – 1.450 ms | ~505 ms | ~490 ms |
+| **Tỉ lệ rớt khung hình** | **100%** | **14.2%** | **~1.5%** |
+| **Trạng thái Hoạt ảnh Qiqi** | ❌ Bị đóng băng hoàn toàn | ✔️ Chuyển động liên tục | ✔️ Chuyển động mượt mà |
 
 ---
 
-## 3. Ảnh Biểu Đồ So Sánh Thực Tế (FPS Timeline Chart)
+## 3. Ảnh Chụp Màn Hình Đối Chiếu Thực Tế
 
 ![So sánh hiệu năng thực tế trên thiết bị](../demo/overview_comparison.jpg)
-*Ảnh chụp kết quả đo đạc thực tế: Main Thread bị giật khung hình và tụt về 0.0 FPS; compute() đạt 51.5 FPS; Isolate đạt 58.9 FPS.*
-
-```text
-65 ┤
-60 ┼┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈ compute / Isolate (~60 FPS)
-   │
-   │
-30 ┼┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
-   │
- 0 ┼─────────┐                              ┌─────────────── Main Thread (rơi về 0 FPS)
-   │         │                              │
-   ┴─────────┼──────────────────────────────┼───────────────
-          -0.5s     0.0s (start)          +1.0s           +1.5s
-```
+*Hình ảnh từ tab "Tổng quan" của ứng dụng: So sánh FPS trung bình, Số lần giật (>50ms) giữa Main Thread, compute() và Isolate.*
 
 ---
 
-## 4. Nhận xét & Đánh giá
+## 4. Phân tích Chi tiết Kết quả
 
 1. **Main Thread**:
-   - Do phải gánh toàn bộ quá trình `jsonDecode` chuỗi lớn, Root Isolate bị phong tỏa 100%. 
-   - Biểu đồ FPS của Main Thread ghi nhận một hố sâu rơi thẳng đứng về **0 FPS** kéo dài tương đương với toàn bộ thời gian xử lý (hơn 1.400 ms), khiến frame dài nhất tương đương đúng bằng wall time.
-   - Trải nghiệm người dùng hoàn toàn bị gián đoạn, thao tác chạm hoặc animation bị vô hiệu hóa.
+   - Khi chạy trên Root Isolate, toàn bộ CPU bị khóa chặt bởi hàm `processLargeJson` (đặc biệt là công đoạn `jsonDecode(rawJson)` với chuỗi 18.5 MB).
+   - Trong suốt thời gian này, không có khung hình nào được render $\implies$ FPS trung bình đo được là **0.0 FPS**, tỉ lệ rớt khung hình đạt **100%**, ghi nhận **1 lần khựng lớn** kéo dài suốt thời gian xử lý.
+   - Hoạt ảnh Qiqi bị đứng hình hoàn toàn, tạo cảm giác app bị crash hoặc đơ với người dùng.
 
-2. **`compute()` và `Isolate.spawn()`**:
-   - Giải phóng hoàn toàn gánh nặng tính toán khỏi Main Thread.
-   - UI duy trì xấp xỉ mức chuẩn **60 FPS** xuyên suốt quá trình đọc và phân tích JSON.
-   - Khung hình dài nhất chỉ ở mức ~19–24 ms (hoàn toàn dưới ngưỡng giật của mắt người).
-   - `Isolate.spawn` kết hợp `Isolate.exit` đạt hiệu năng xử lý xuất sắc và mang lại khả năng cập nhật tiến độ (progress reporting) liên tục mà `compute()` không làm được.
+2. **Flutter `compute()`**:
+   - Tác vụ parse JSON được đẩy sang Isolate nền do Flutter Foundation tự động tạo.
+   - Root Isolate vẫn tự do duy trì vòng lặp vẽ khung hình, hoạt ảnh Qiqi vẫn chuyển động đều đặn.
+   - FPS duy trì ở mức cao (**51.5 FPS**), **0 lần khựng** (> 50 ms), thời gian phản hồi tương tác chỉ còn **10.3 ms**.
+
+3. **Custom Isolate (`Isolate.spawn` + `Isolate.exit`)**:
+   - Tự quản lý Isolate và kết thúc bằng `Isolate.exit(sendPort, result)`.
+   - Cơ chế zero-copy transfer của `Isolate.exit` giúp chuyển giao quyền sở hữu vùng nhớ Map kết quả sang Root Isolate tức thời mà không tốn chi phí deep copy.
+   - Đạt hiệu năng tối ưu nhất: **58.9 FPS** (gần sát mức trần 60 FPS của màn hình), tỉ lệ rớt khung hình chỉ ~1.5%, **0 lần khựng**.
